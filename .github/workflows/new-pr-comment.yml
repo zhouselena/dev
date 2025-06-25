@@ -1,0 +1,46 @@
+name: New Pull Request Commenter
+
+on:
+  pull_request:
+    types: [opened] # This action triggers only when a pull request is opened
+
+jobs:
+  add-pr-comment:
+    runs-on: ubuntu-latest # Specifies the operating system for the job
+
+    permissions:
+      pull-requests: write # Grants the necessary permission to write comments on pull requests
+
+    steps:
+      - name: Checkout repository # Standard step to checkout the repository code
+        uses: actions/checkout@v4
+
+      - name: Add comment to new PR # This step uses the github-script action to interact with the GitHub API
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get the pull request number from the GitHub context
+            const prNumber = context.payload.pull_request.number;
+            const repo = context.repo;
+
+            // Define the comment body. You can customize this message.
+            const commentBody = `
+            👋 **Welcome to this new Pull Request!**
+
+            Thanks for opening this PR. We appreciate your contribution!
+            Please ensure you've:
+            - Added relevant tests.
+            - Updated documentation if necessary.
+
+            We'll review it shortly!
+            `;
+
+            // Use the GitHub Octokit client to create a new comment on the PR
+            await github.rest.issues.createComment({
+              owner: repo.owner,
+              repo: repo.repo,
+              issue_number: prNumber,
+              body: commentBody
+            });
+
+            console.log(`Comment added to PR #${prNumber}`);
