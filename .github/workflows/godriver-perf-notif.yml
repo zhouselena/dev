@@ -1,0 +1,94 @@
+name: GoDriver Performance Notification
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize] # synchronize to re-run on new pushes to the PR
+
+jobs:
+  add-pr-comment:
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install MongoDB driver
+        run: npm install mongodb
+
+      - name: Add comment to new PR with performance data
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { MongoClient } = require('mongodb');
+            const prNumber = context.payload.pull_request.number;
+            const repo = context.repo;
+
+            // MongoDB Atlas connection details
+            const uri = "mongodb+srv://pr-bot:ihepwQcjgt3laDJ4@cluster0.gzdtojq.mongodb.net/?retryWrites=true&w=majority&appName=cluster0";
+            const dbName = "dummyAnalytics";
+            const collectionName = "dummyTimeSeries";
+
+            // Initialize comment body. This will be overwritten if no documents are found.
+            let commentBody = `
+            # 👋 GoDriver Performance Notification
+            The following benchmark tests had statistically significant changes (i.e., h-score > 0.6):\n`;
+
+            let client;
+            try {
+              client = new MongoClient(uri);
+              await client.connect();
+              console.log("Successfully connected to MongoDB Atlas.");
+
+              const database = client.db(dbName);
+              const collection = database.collection(collectionName);
+
+              const query = {
+                "project": "mongo-go-driver",
+                "variant": "perf",
+                "task": "perf",
+              };
+
+              const documents = await collection.find(query).toArray();
+              console.log(`Found ${documents.length} documents matching the query.`);
+
+              if (documents.length > 0) {
+                commentBody += `| Test Name | H-Score | Performance Baron |\n`;
+                commentBody += `|---|---|---|\n`;
+                documents.forEach(doc => {
+                  const testName = doc.test || doc._id.toString();
+                  const hScore = '0.6'; // dummy h-score for now
+                  const link = '[Link](https://example.com)'; // dummy link for now
+                  commentBody += `| ${testName} | ${hScore} | ${link} |\n`;
+                });
+              } else {
+                commentBody = "There were no significant changes to the performance to report.";
+                console.log("No documents found.");
+              }
+
+            } catch (error) {
+              console.error("Error connecting to or querying MongoDB:", error);
+              commentBody = `*Error retrieving performance data: ${error.message}*
+                              Please check the MongoDB connection string and query.`;
+            } finally {
+              if (client) {
+                await client.close();
+                console.log("MongoDB connection closed.");
+              }
+            }
+
+            await github.rest.issues.createComment({
+              owner: repo.owner,
+              repo: repo.repo,
+              issue_number: prNumber,
+              body: commentBody
+            });
+
+            console.log(`Comment successfully added to PR #${prNumber}.`);
