@@ -137,4 +137,3 @@ jobs:
               });
               console.log(`Created new comment on PR #${prNumber}.`);
             }
-
