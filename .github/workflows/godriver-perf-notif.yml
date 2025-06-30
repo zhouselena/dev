@@ -87,7 +87,7 @@ jobs:
             }
 
             // Append the unique marker to the comment content
-            commentContent += `\n\n${COMMENT_MARKER}`;
+            commentBody += `\n\n${COMMENT_MARKER}`;
 
             // If this is the first time the PR is created, make a new comment.
             // Otherwise fetch previously created comment and update it.
@@ -106,7 +106,7 @@ jobs:
                 owner: repo.owner,
                 repo: repo.repo,
                 comment_id: existingComment.id,
-                body: commentContent,
+                body: commentBody,
               });
               console.log(`Updated existing comment #${existingComment.id} on PR #${prNumber}.`);
             } else {
@@ -114,7 +114,7 @@ jobs:
                 owner: repo.owner,
                 repo: repo.repo,
                 issue_number: prNumber,
-                body: commentContent,
+                body: commentBody,
               });
               console.log(`Created new comment on PR #${prNumber}.`);
             }
