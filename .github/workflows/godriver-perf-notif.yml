@@ -1,0 +1,112 @@
+name: GoDriver Performance Notification
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize] # synchronize to re-run on new pushes to the PR
+
+jobs:
+  add-pr-comment:
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install MongoDB driver
+        run: npm install mongodb
+
+      - name: Add comment to new PR with performance data
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Import MongoClient from the 'mongodb' package
+            const { MongoClient } = require('mongodb');
+
+            // Get PR number and repository details from the GitHub Actions context
+            const prNumber = context.payload.pull_request.number;
+            const repo = context.repo;
+
+            // MongoDB Atlas connection details
+            const uri = "mongodb+srv://pr-bot:ihepwQcjgt3laDJ4@cluster0.gzdtojq.mongodb.net/?retryWrites=true&w=majority&appName=cluster0";
+            const dbName = "dummyAnalytics";
+            const collectionName = "dummyTimeSeries";
+
+            // Initialize comment body. This will be overwritten if no documents are found.
+            let commentBody = `
+            👋 *GoDriver Performance Notification**
+            The following benchmark tests had statistically significant changes (i.e., h-score > 0.6):
+
+            `;
+
+            let client; // Declare client outside try-catch for finally block access
+            try {
+              // Create a new MongoClient instance
+              client = new MongoClient(uri);
+              // Connect to the MongoDB Atlas cluster
+              await client.connect();
+              console.log("Successfully connected to MongoDB Atlas.");
+
+              // Get the database and collection instances
+              const database = client.db(dbName);
+              const collection = database.collection(collectionName);
+
+              // Define the query filter for documents
+              const query = {
+                "project": "mongo-go-driver",
+                "variant": "perf",
+                "task": "perf",
+              };
+
+              // Execute the find query and convert results to an array
+              const documents = await collection.find(query).toArray();
+              console.log(`Found ${documents.length} documents matching the query.`);
+
+              // Check if any documents were found
+              if (documents.length > 0) {
+                // Add Markdown table header to the comment body
+                commentBody += `| Test Name | H-Score | Link |
+                                |---|---|---|`;
+                // Iterate over each document and add a row to the Markdown table
+                documents.forEach(doc => {
+                  // Assuming a 'test' field exists for the test name, otherwise use _id
+                  const testName = doc.test || doc._id.toString();
+                  const hScore = '0.6'; // Dummy h-score as requested
+                  const link = '[Link](https://example.com)'; // Dummy link as requested
+                  commentBody += `| ${testName} | ${hScore} | ${link} |\n`;
+                });
+              } else {
+                // If no documents are found, set the specific message
+                commentBody = "There were no significant changes to the performance to report.";
+                console.log("No significant performance changes to report.");
+              }
+
+            } catch (error) {
+              // Log and append error message to the comment body if MongoDB operations fail
+              console.error("Error connecting to or querying MongoDB:", error);
+              commentBody = `*Error retrieving performance data: ${error.message}*
+                              Please check the MongoDB connection string and query.`;
+            } finally {
+              // Ensure the MongoDB client connection is closed
+              if (client) {
+                await client.close();
+                console.log("MongoDB connection closed.");
+              }
+            }
+
+            // Create a comment on the pull request with the generated body
+            await github.rest.issues.createComment({
+              owner: repo.owner,
+              repo: repo.repo,
+              issue_number: prNumber,
+              body: commentBody
+            });
+
+            console.log(`Comment successfully added to PR #${prNumber}.`);
