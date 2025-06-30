@@ -27,10 +27,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            // Import MongoClient from the 'mongodb' package
             const { MongoClient } = require('mongodb');
-
-            // Get PR number and repository details from the GitHub Actions context
             const prNumber = context.payload.pull_request.number;
             const repo = context.repo;
 
@@ -41,65 +38,52 @@ jobs:
 
             // Initialize comment body. This will be overwritten if no documents are found.
             let commentBody = `
-            👋 **GoDriver Performance Notification**
-            The following benchmark tests had statistically significant changes (i.e., h-score > 0.6):`;
+            # 👋 GoDriver Performance Notification
+            The following benchmark tests had statistically significant changes (i.e., h-score > 0.6):\n`;
 
-            let client; // Declare client outside try-catch for finally block access
+            let client;
             try {
-              // Create a new MongoClient instance
               client = new MongoClient(uri);
-              // Connect to the MongoDB Atlas cluster
               await client.connect();
               console.log("Successfully connected to MongoDB Atlas.");
 
-              // Get the database and collection instances
               const database = client.db(dbName);
               const collection = database.collection(collectionName);
 
-              // Define the query filter for documents
               const query = {
                 "project": "mongo-go-driver",
                 "variant": "perf",
                 "task": "perf",
               };
 
-              // Execute the find query and convert results to an array
               const documents = await collection.find(query).toArray();
               console.log(`Found ${documents.length} documents matching the query.`);
 
-              // Check if any documents were found
               if (documents.length > 0) {
-                // Add Markdown table header to the comment body
                 commentBody += `| Test Name | H-Score | Link |\n
                                 |---|---|---|`;
-                // Iterate over each document and add a row to the Markdown table
                 documents.forEach(doc => {
-                  // Assuming a 'test' field exists for the test name, otherwise use _id
                   const testName = doc.test || doc._id.toString();
-                  const hScore = '0.6'; // Dummy h-score as requested
-                  const link = '[Link](https://example.com)'; // Dummy link as requested
+                  const hScore = '0.6'; // dummy h-score for now
+                  const link = '[Link](https://example.com)'; // dummy link for now
                   commentBody += `| ${testName} | ${hScore} | ${link} |\n`;
                 });
               } else {
-                // If no documents are found, set the specific message
                 commentBody = "There were no significant changes to the performance to report.";
-                console.log("No significant performance changes to report.");
+                console.log("No documents found.");
               }
 
             } catch (error) {
-              // Log and append error message to the comment body if MongoDB operations fail
               console.error("Error connecting to or querying MongoDB:", error);
               commentBody = `*Error retrieving performance data: ${error.message}*
                               Please check the MongoDB connection string and query.`;
             } finally {
-              // Ensure the MongoDB client connection is closed
               if (client) {
                 await client.close();
                 console.log("MongoDB connection closed.");
               }
             }
 
-            // Create a comment on the pull request with the generated body
             await github.rest.issues.createComment({
               owner: repo.owner,
               repo: repo.repo,
