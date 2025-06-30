@@ -41,10 +41,8 @@ jobs:
 
             // Initialize comment body. This will be overwritten if no documents are found.
             let commentBody = `
-            👋 *GoDriver Performance Notification**
-            The following benchmark tests had statistically significant changes (i.e., h-score > 0.6):
-
-            `;
+            👋 **GoDriver Performance Notification**
+            The following benchmark tests had statistically significant changes (i.e., h-score > 0.6):`;
 
             let client; // Declare client outside try-catch for finally block access
             try {
@@ -72,7 +70,7 @@ jobs:
               // Check if any documents were found
               if (documents.length > 0) {
                 // Add Markdown table header to the comment body
-                commentBody += `| Test Name | H-Score | Link |
+                commentBody += `| Test Name | H-Score | Link |\n
                                 |---|---|---|`;
                 // Iterate over each document and add a row to the Markdown table
                 documents.forEach(doc => {
