@@ -30,6 +30,7 @@ jobs:
             const { MongoClient } = require('mongodb');
             const prNumber = context.payload.pull_request.number;
             const repo = context.repo;
+            const COMMENT_MARKER = '<!-- perf-notif-comment -->'; // unique marker to identify perf comments
 
             // MongoDB Atlas connection details
             const uri = "mongodb+srv://pr-bot:ihepwQcjgt3laDJ4@cluster0.gzdtojq.mongodb.net/?retryWrites=true&w=majority&appName=cluster0";
@@ -68,7 +69,7 @@ jobs:
                   const link = '[link](https://example.com)'; // dummy link for now
                   commentBody += `| ${testName} | ${hScore} | ${link} |\n`;
                 });
-                commentBody += `*\nFor a comprehensive view of all microbenchmark results for this PR's commit, please visit: [link](https://example.com).*`
+                commentBody += `\n*For a comprehensive view of all microbenchmark results for this PR's commit, please visit: [link](https://example.com).*`
               } else {
                 commentBody = "There were no significant changes to the performance to report.";
                 console.log("No documents found.");
@@ -85,11 +86,35 @@ jobs:
               }
             }
 
-            await github.rest.issues.createComment({
+            // Append the unique marker to the comment content
+            commentContent += `\n\n${COMMENT_MARKER}`;
+
+            // If this is the first time the PR is created, make a new comment.
+            // Otherwise fetch previously created comment and update it.
+            // This is to decrease clutter from multiple comments.
+            const { data: comments } = await github.rest.issues.listComments({
               owner: repo.owner,
               repo: repo.repo,
               issue_number: prNumber,
-              body: commentBody
             });
 
-            console.log(`Comment successfully added to PR #${prNumber}.`);
+            const existingComment = comments.find(comment =>
+              comment.body.includes(COMMENT_MARKER)
+            );
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: repo.owner,
+                repo: repo.repo,
+                comment_id: existingComment.id,
+                body: commentContent,
+              });
+              console.log(`Updated existing comment #${existingComment.id} on PR #${prNumber}.`);
+            } else {
+              await github.rest.issues.createComment({
+                owner: repo.owner,
+                repo: repo.repo,
+                issue_number: prNumber,
+                body: commentContent,
+              });
+              console.log(`Created new comment on PR #${prNumber}.`);
+            }
