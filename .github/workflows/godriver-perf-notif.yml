@@ -2,7 +2,7 @@ name: GoDriver Performance Notification
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize] # synchronize to re-run on new pushes to the PR
+    types: [opened, reopened, synchronize]
 
 jobs:
   add-pr-comment:
