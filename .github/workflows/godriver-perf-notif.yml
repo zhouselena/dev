@@ -61,7 +61,7 @@ jobs:
 
               if (documents.length > 0) {
                 commentBody += `| Test Name | H-Score | Link |\n
-                                |---|---|---|`;
+                                |---|---|---|\n`;
                 documents.forEach(doc => {
                   const testName = doc.test || doc._id.toString();
                   const hScore = '0.6'; // dummy h-score for now
