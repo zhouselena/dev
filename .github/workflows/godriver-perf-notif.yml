@@ -1,48 +1,59 @@
 name: GoDriver Performance Notification
-
 on:
   pull_request:
-    types: [opened, reopened, synchronize] # synchronize to re-run on new pushes to the PR
-
+    types:
+      - opened
+      - reopened
+      - synchronize
 jobs:
   add-pr-comment:
     runs-on: ubuntu-latest
-
+    env:
+      MONGO_URI: ${{ secrets.MONGO_URI }}
     permissions:
       pull-requests: write
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18"
-
       - name: Install MongoDB driver
         run: npm install mongodb
-
       - name: Add comment to new PR with performance data
         uses: actions/github-script@v7
         with:
-          script: |
+          script: >
             const { MongoClient } = require('mongodb');
+
             const prNumber = context.payload.pull_request.number;
+
             const repo = context.repo;
+
             const COMMENT_MARKER = '<!-- perf-notif-comment -->'; // unique marker to identify perf comments
 
+
             // MongoDB Atlas connection details
-            const uri = "mongodb+srv://pr-bot:ihepwQcjgt3laDJ4@cluster0.gzdtojq.mongodb.net/?retryWrites=true&w=majority&appName=cluster0";
+
+            const uri = process.env.MONGO_URI;
+
             const dbName = "dummyAnalytics";
+
             const collectionName = "dummyTimeSeries";
 
+
             // Initialize comment body. This will be overwritten if no documents are found.
+
             let commentBody = `
+
             # 👋 GoDriver Performance Notification
+
             The following benchmark tests had statistically significant changes (i.e., h-score > 0.6):\n`;
 
+
             let client;
+
             try {
               client = new MongoClient(uri);
               await client.connect();
@@ -69,7 +80,7 @@ jobs:
                   const link = '[link](https://example.com)'; // dummy link for now
                   commentBody += `| ${testName} | ${hScore} | ${link} |\n`;
                 });
-                commentBody += `\n*For a comprehensive view of all microbenchmark results for this PR's commit, please visit: [link](https://example.com).*`
+                commentBody += `\n*For a comprehensive view of all microbenchmark results for this PR's commit, please visit [this link](https://example.com).*`
               } else {
                 commentBody = "There were no significant changes to the performance to report.";
                 console.log("No documents found.");
@@ -86,21 +97,29 @@ jobs:
               }
             }
 
+
             // Append the unique marker to the comment content
+
             commentBody += `\n\n${COMMENT_MARKER}`;
 
+
             // If this is the first time the PR is created, make a new comment.
+
             // Otherwise fetch previously created comment and update it.
+
             // This is to decrease clutter from multiple comments.
+
             const { data: comments } = await github.rest.issues.listComments({
               owner: repo.owner,
               repo: repo.repo,
               issue_number: prNumber,
             });
 
+
             const existingComment = comments.find(comment =>
               comment.body.includes(COMMENT_MARKER)
             );
+
             if (existingComment) {
               await github.rest.issues.updateComment({
                 owner: repo.owner,
