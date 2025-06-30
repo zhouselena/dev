@@ -69,7 +69,7 @@ jobs:
                   const link = '[link](https://example.com)'; // dummy link for now
                   commentBody += `| ${testName} | ${hScore} | ${link} |\n`;
                 });
-                commentBody += `\n*For a comprehensive view of all microbenchmark results for this PR's commit, please visit: [link](https://example.com).*`
+                commentBody += `\n*For a comprehensive view of all microbenchmark results for this PR's commit, please visit [this link](https://example.com).*`
               } else {
                 commentBody = "There were no significant changes to the performance to report.";
                 console.log("No documents found.");
