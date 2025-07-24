@@ -3,7 +3,8 @@ By Selena Zhou
 
 ## Github Actions
 - Github Action Demo
-- New PR Comment
-- GoDriver Performance Notification (connected to dummy MongoDB atlast cluster)
+- New PR Comment (need manual dispatch)
+- GoDriver Performance Notification (connected to dummy MongoDB atlas cluster)
 
 ## Scripts
+- `start-repl-set-basic.sh`: start MongoDB server through Docker
