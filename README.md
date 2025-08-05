@@ -8,3 +8,4 @@ By Selena Zhou
 
 ## Scripts
 - `start-repl-set-basic.sh`: start MongoDB server through Docker
+- `run-benchstat.sh`: template for running benchstat in Go
